@@ -2,25 +2,24 @@ import express from "express";
 import cors from "cors";
 import env from "./config/env.js";
 import { query } from "./config/db.js";
+import authRoutes from "./routes/auth.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
 
 const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
   "https://vertex-supermarke.vercel.app",
+  "https://vertex-supermarket.vercel.app",
   env.CLIENT_URL,
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin(origin, callback) {
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -49,6 +48,16 @@ app.get("/api/test-db", async (req, res) => {
       message: error.message,
     });
   }
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/settings", settingsRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
 });
 
 export default app;

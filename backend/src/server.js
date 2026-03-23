@@ -8,8 +8,10 @@ const startServer = async () => {
     console.log("✅ MySQL connected successfully");
     connection.release();
 
-    app.listen(env.PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+    const PORT = env.PORT || process.env.PORT || 5000;
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (error) {
     console.error("❌ MySQL connection failed:");
