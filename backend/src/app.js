@@ -2,15 +2,20 @@ import express from "express";
 import cors from "cors";
 import env from "./config/env.js";
 import { query } from "./config/db.js";
-import apiRoutes from "./routes/index.js";
-import { errorHandler } from "./middlewares/error.middleware.js";
+import authRoutes from "./routes/auth.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import categoryRoutes from "./routes/category.routes.js";
+import brandRoutes from "./routes/brand.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 
 const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://vertex-supermarke.vercel.app",
   "https://vertex-supermarket.vercel.app",
+  "https://supermarket.vertexsoftware.in",
+  "http://supermarket.vertexsoftware.in",
   env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -19,9 +24,11 @@ app.use(
     origin(origin, callback) {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(null, false);
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -50,7 +57,12 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
-app.use("/api", apiRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/brands", brandRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -58,7 +70,5 @@ app.use((req, res) => {
     message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
-
-app.use(errorHandler);
 
 export default app;
