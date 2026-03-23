@@ -61,3 +61,12 @@ npm run dev
 
 - This is a strong production starter with working auth, RBAC, Prisma schema, and CRUD foundations.
 - Some advanced business rules like full GST workflows, thermal printer drivers, WhatsApp ordering, delivery routing, and real-time barcode hardware integration are scaffolded but not fully implemented.
+
+
+
+git add .
+git commit -m "fix: render port config"
+git push
+
+
+Email: admin@vertexsupermarket.com Password: Admin@123
