@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import env from "./config/env.js";
 import { query } from "./config/db.js";
-import authRoutes from "./routes/auth.routes.js";
-import settingsRoutes from "./routes/settings.routes.js";
+import apiRoutes from "./routes/index.js";
+import { errorHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
 
@@ -50,8 +50,7 @@ app.get("/api/test-db", async (req, res) => {
   }
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/settings", settingsRoutes);
+app.use("/api", apiRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -59,5 +58,7 @@ app.use((req, res) => {
     message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
+
+app.use(errorHandler);
 
 export default app;
