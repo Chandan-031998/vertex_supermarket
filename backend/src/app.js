@@ -2,22 +2,32 @@ import express from "express";
 import cors from "cors";
 import env from "./config/env.js";
 import { query } from "./config/db.js";
-import apiRoutes from "./routes/index.js";
-import { errorHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://vertex-supermarke.vercel.app",
+  env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use("/api", apiRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({
@@ -40,7 +50,5 @@ app.get("/api/test-db", async (req, res) => {
     });
   }
 });
-
-app.use(errorHandler);
 
 export default app;
