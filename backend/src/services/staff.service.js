@@ -23,7 +23,7 @@ export async function getStaffBootstrap() {
       `SELECT s.*, u.full_name AS user_name
        FROM shifts s
        JOIN users u ON u.id = s.user_id
-       ORDER BY s.shift_date DESC, s.id DESC
+       ORDER BY s.started_at DESC, s.id DESC
        LIMIT 50`
     ),
   ]);
@@ -119,8 +119,8 @@ export async function toggleShift(payload, user, ipAddress) {
 
   if (action === "start") {
     const result = await query(
-      `INSERT INTO shifts (user_id, shift_date, start_time, notes)
-       VALUES (?, CURDATE(), NOW(), ?)`,
+      `INSERT INTO shifts (user_id, started_at, notes)
+       VALUES (?, CURRENT_TIMESTAMP, ?)`,
       [user.id, String(payload.notes ?? "").trim() || null]
     );
 
@@ -137,7 +137,7 @@ export async function toggleShift(payload, user, ipAddress) {
   }
 
   const openShifts = await query(
-    "SELECT id FROM shifts WHERE user_id = ? AND end_time IS NULL ORDER BY id DESC LIMIT 1",
+    "SELECT id FROM shifts WHERE user_id = ? AND ended_at IS NULL ORDER BY id DESC LIMIT 1",
     [user.id]
   );
 
@@ -147,7 +147,7 @@ export async function toggleShift(payload, user, ipAddress) {
 
   await query(
     `UPDATE shifts
-     SET end_time = NOW(), notes = CONCAT(COALESCE(notes, ''), ?)
+     SET ended_at = CURRENT_TIMESTAMP, notes = COALESCE(notes, '') || ?
      WHERE id = ?`,
     [payload.notes ? ` | ${payload.notes}` : "", openShifts[0].id]
   );

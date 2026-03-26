@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getProduct,
+  getProductByBarcode,
   getProducts,
   getSaleSearchProducts,
   postProduct,
@@ -13,6 +14,7 @@ import { requirePermission } from "../middlewares/permission.middleware.js";
 const router = Router();
 
 router.get("/search/pos", authenticate, requirePermission("pos.view"), getSaleSearchProducts);
+router.get("/barcode/:barcode", authenticate, requirePermission("pos.view"), getProductByBarcode);
 router.get("/", authenticate, requirePermission("products.view"), getProducts);
 router.get("/:id", authenticate, requirePermission("products.view"), getProduct);
 router.post("/", authenticate, requirePermission("products.add"), postProduct);

@@ -234,15 +234,22 @@ export async function listSales(filters = {}) {
             c.customer_name,
             c.phone AS customer_phone,
             u.full_name AS cashier_name,
-            GROUP_CONCAT(DISTINCT sp.payment_method ORDER BY sp.payment_method SEPARATOR ', ') AS payment_methods,
-            COUNT(DISTINCT si.id) AS line_count
+            COALESCE(pay.payment_methods, '') AS payment_methods,
+            COALESCE(lines.line_count, 0) AS line_count
      FROM sales s
      LEFT JOIN customers c ON c.id = s.customer_id
      JOIN users u ON u.id = s.cashier_id
-     LEFT JOIN sale_items si ON si.sale_id = s.id
-     LEFT JOIN sale_payments sp ON sp.sale_id = s.id
+     LEFT JOIN LATERAL (
+       SELECT STRING_AGG(DISTINCT sp.payment_method, ', ' ORDER BY sp.payment_method) AS payment_methods
+       FROM sale_payments sp
+       WHERE sp.sale_id = s.id
+     ) pay ON TRUE
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*) AS line_count
+       FROM sale_items si
+       WHERE si.sale_id = s.id
+     ) lines ON TRUE
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     GROUP BY s.id
      ORDER BY s.sale_date DESC, s.id DESC`,
     params
   );
@@ -269,7 +276,7 @@ export async function listHeldBills() {
      LEFT JOIN customers c ON c.id = hb.customer_id
      JOIN users u ON u.id = hb.cashier_id
      LEFT JOIN held_bill_items hbi ON hbi.held_bill_id = hb.id
-     GROUP BY hb.id
+     GROUP BY hb.id, c.customer_name, u.full_name
      ORDER BY hb.updated_at DESC`
   );
 }

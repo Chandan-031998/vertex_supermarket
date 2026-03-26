@@ -6,8 +6,13 @@ const env = {
   PORT: process.env.PORT || 5000,
   NODE_ENV: process.env.NODE_ENV || "development",
 
+  DATABASE_URL: process.env.DATABASE_URL,
+  SUPABASE_POOLER_URL: process.env.SUPABASE_POOLER_URL,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+
   DB_HOST: process.env.DB_HOST,
-  DB_PORT: Number(process.env.DB_PORT || 3306),
+  DB_PORT: Number(process.env.DB_PORT || 5432),
   DB_USER: process.env.DB_USER,
   DB_PASSWORD: process.env.DB_PASSWORD,
   DB_NAME: process.env.DB_NAME,

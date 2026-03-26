@@ -8,8 +8,8 @@ export async function getDashboardSummary() {
          (SELECT COUNT(*) FROM customers) AS total_customers,
          (SELECT COUNT(*) FROM suppliers) AS total_suppliers,
          (SELECT COUNT(*) FROM sales) AS total_sales,
-         (SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE DATE(sale_date) = CURDATE()) AS today_sales,
-         (SELECT COALESCE(SUM(total_amount), 0) FROM purchase_orders WHERE DATE(order_date) = CURDATE()) AS today_purchases`
+         (SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE DATE(sale_date) = CURRENT_DATE) AS today_sales,
+         (SELECT COALESCE(SUM(total_amount), 0) FROM purchase_orders WHERE DATE(order_date) = CURRENT_DATE) AS today_purchases`
     ),
     query(
       `SELECT s.id, s.invoice_no, s.sale_date, s.total_amount, u.full_name AS cashier_name, c.customer_name

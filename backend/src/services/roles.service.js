@@ -23,7 +23,7 @@ export async function listRoles() {
   return query(
     `SELECT r.*,
             COUNT(DISTINCT u.id) AS user_count,
-            COUNT(DISTINCT CASE WHEN rp.is_allowed = 1 THEN rp.permission_id END) AS permission_count
+            COUNT(DISTINCT CASE WHEN rp.is_allowed = TRUE THEN rp.permission_id END) AS permission_count
      FROM roles r
      LEFT JOIN users u ON u.role_id = r.id
      LEFT JOIN role_permissions rp ON rp.role_id = r.id
@@ -166,10 +166,11 @@ export async function saveRolePermissions(roleId, permissionKeys = [], user, ipA
     await query(
       `INSERT INTO role_permissions (role_id, permission_id, is_allowed)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         is_allowed = VALUES(is_allowed),
+       ON CONFLICT (role_id, permission_id)
+       DO UPDATE SET
+         is_allowed = EXCLUDED.is_allowed,
          updated_at = CURRENT_TIMESTAMP`,
-      [roleId, permission.id, allowedSet.has(permission.permission_key) ? 1 : 0]
+      [roleId, permission.id, allowedSet.has(permission.permission_key)]
     );
   }
 

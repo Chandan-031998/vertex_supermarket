@@ -15,8 +15,8 @@ function normalizeProduct(payload = {}) {
     mrp: Number(payload.mrp ?? 0),
     gst_percent: Number(payload.gst_percent ?? payload.gstRate ?? 0),
     reorder_level: Number(payload.reorder_level ?? payload.reorderLevel ?? 0),
-    track_batch: payload.track_batch ?? payload.trackBatch ? 1 : 0,
-    track_expiry: payload.track_expiry ?? payload.trackExpiry ? 1 : 0,
+    track_batch: Boolean(payload.track_batch ?? payload.trackBatch),
+    track_expiry: Boolean(payload.track_expiry ?? payload.trackExpiry),
     status: payload.status === "inactive" ? "inactive" : "active",
     image: String(payload.image ?? "").trim() || null,
   };

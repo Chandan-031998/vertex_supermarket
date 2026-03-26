@@ -73,7 +73,7 @@ export async function getReportPack(filters = {}) {
        JOIN products p ON p.id = si.product_id
        LEFT JOIN categories c ON c.id = p.category_id
        ${salesFilter.where.length ? `WHERE ${salesFilter.where.join(" AND ")}` : ""}
-       GROUP BY c.id
+       GROUP BY c.id, c.name
        ORDER BY total_sales DESC`
       ,
       salesFilter.params
@@ -86,7 +86,7 @@ export async function getReportPack(filters = {}) {
        JOIN sales s ON s.id = si.sale_id
        JOIN products p ON p.id = si.product_id
        ${salesFilter.where.length ? `WHERE ${salesFilter.where.join(" AND ")}` : ""}
-       GROUP BY p.id
+       GROUP BY p.id, p.name, p.sku
        ORDER BY total_sales DESC`,
       salesFilter.params
     ),
@@ -138,7 +138,7 @@ export async function getReportPack(filters = {}) {
        JOIN sales s ON s.id = si.sale_id
        JOIN products p ON p.id = si.product_id
        ${salesFilter.where.length ? `WHERE ${salesFilter.where.join(" AND ")}` : ""}
-       GROUP BY p.id
+       GROUP BY p.id, p.name, p.sku
        ORDER BY total_qty DESC
        LIMIT 10`,
       salesFilter.params

@@ -6,6 +6,8 @@ import {
   searchSaleProducts,
   updateProduct,
 } from "../services/product.service.js";
+import { query } from "../config/db.js";
+import { AppError } from "../utils/appError.js";
 
 export async function getProducts(req, res, next) {
   try {
@@ -22,6 +24,40 @@ export async function getProduct(req, res, next) {
     res.json({ success: true, message: "Product fetched successfully", data });
   } catch (error) {
     next(error);
+  }
+}
+
+export async function getProductByBarcode(req, res, next) {
+  try {
+    const barcode = String(req.params.barcode ?? "").trim();
+    if (!barcode) {
+      throw new AppError("Barcode is required", 400);
+    }
+
+    const rows = await query(
+      `SELECT p.id, p.name, p.sku, p.barcode, p.unit, p.selling_price, p.mrp, p.gst_percent, p.track_batch, p.track_expiry,
+              COALESCE(i.current_stock, 0) AS current_stock
+       FROM products p
+       LEFT JOIN inventory i ON i.product_id = p.id
+       WHERE p.status = 'active' AND p.barcode = ?
+       LIMIT 1`,
+      [barcode]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found for scanned barcode",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Product fetched successfully",
+      data: rows[0],
+    });
+  } catch (error) {
+    return next(error);
   }
 }
 

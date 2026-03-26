@@ -1,0 +1,125 @@
+.barcode-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50mm, 50mm));
+  justify-content: flex-start;
+  gap: 2mm;
+}
+
+.receipt-paper {
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+  color: #000;
+  font-family: "Courier New", "Liberation Mono", monospace;
+}
+
+.receipt-divider {
+  border-top: 0.2mm dashed #000;
+}
+
+.barcode-label {
+  width: 50mm;
+  height: 25mm;
+  border: 0.2mm solid #000;
+  background: #fff;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1mm 1.5mm;
+  box-sizing: border-box;
+  text-align: center;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.barcode-name {
+  width: 100%;
+  font-size: 2.8mm;
+  font-weight: 600;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barcode-svg-wrap {
+  width: 100%;
+  height: 8mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.barcode-svg {
+  width: 96%;
+  max-height: 8mm;
+}
+
+.barcode-value {
+  width: 100%;
+  font-size: 2.45mm;
+  letter-spacing: 0.12mm;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barcode-price {
+  font-size: 3mm;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .barcode-print-page {
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .barcode-sheet {
+    margin: 0;
+    max-width: none;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 1mm;
+    gap: 2mm;
+    grid-template-columns: repeat(auto-fill, minmax(50mm, 50mm));
+  }
+
+  .barcode-label {
+    border-color: #000;
+  }
+
+  .receipt-paper {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+}

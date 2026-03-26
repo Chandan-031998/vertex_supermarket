@@ -72,14 +72,18 @@ function normalizeRoleName(roleName) {
     .replace(/\s+/g, "_");
 }
 
+const userPermissionCache = new Map();
+const USER_PERMISSION_TTL_MS = 5 * 60 * 1000;
+
 export async function ensurePermissionCatalog() {
   for (const [moduleName, permissionKey, permissionLabel] of PERMISSION_CATALOG) {
     await query(
       `INSERT INTO permissions (module_name, permission_key, permission_label)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         module_name = VALUES(module_name),
-         permission_label = VALUES(permission_label)`,
+       ON CONFLICT (permission_key)
+       DO UPDATE SET
+         module_name = EXCLUDED.module_name,
+         permission_label = EXCLUDED.permission_label`,
       [moduleName, permissionKey, permissionLabel]
     );
   }
@@ -108,13 +112,11 @@ export async function getPermissionCatalog() {
 }
 
 export async function getRolePermissionKeys(roleId) {
-  await ensurePermissionCatalog();
-
   const rows = await query(
     `SELECT p.permission_key
      FROM role_permissions rp
      JOIN permissions p ON p.id = rp.permission_id
-     WHERE rp.role_id = ? AND rp.is_allowed = 1`,
+     WHERE rp.role_id = ? AND rp.is_allowed = TRUE`,
     [roleId]
   );
 
@@ -122,20 +124,30 @@ export async function getRolePermissionKeys(roleId) {
 }
 
 export async function getUserPermissionKeys(userId, roleName = "") {
-  await ensurePermissionCatalog();
-
   if (normalizeRoleName(roleName) === "super_admin") {
     return PERMISSION_CATALOG.map(([, permissionKey]) => permissionKey);
+  }
+
+  const cacheKey = `${userId}:${normalizeRoleName(roleName)}`;
+  const cached = userPermissionCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.permissions;
   }
 
   const rows = await query(
     `SELECT p.permission_key
      FROM users u
-     JOIN role_permissions rp ON rp.role_id = u.role_id AND rp.is_allowed = 1
+     JOIN role_permissions rp ON rp.role_id = u.role_id AND rp.is_allowed = TRUE
      JOIN permissions p ON p.id = rp.permission_id
      WHERE u.id = ?`,
     [userId]
   );
 
-  return rows.map((row) => row.permission_key);
+  const permissions = rows.map((row) => row.permission_key);
+  userPermissionCache.set(cacheKey, {
+    permissions,
+    expiresAt: Date.now() + USER_PERMISSION_TTL_MS,
+  });
+
+  return permissions;
 }

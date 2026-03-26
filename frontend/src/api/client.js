@@ -1,10 +1,11 @@
 import axios from "axios";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD
-    ? "https://vertex-supermarket.onrender.com/api"
-    : "http://localhost:5000/api");
+const envApiUrl = String(import.meta.env.VITE_API_URL || "").trim();
+const runtimeDefaultApi =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5000/api"
+    : `${window.location.origin}/api`;
+const API_URL = envApiUrl || runtimeDefaultApi;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -21,6 +22,20 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401) {
+      localStorage.removeItem("vertex_token");
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default api;
 export { API_URL };

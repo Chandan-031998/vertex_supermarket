@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   return (
     <Layout title="Dashboard">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {stats.map((item) => (
           <StatCard key={item.label} {...item} />
         ))}
@@ -39,14 +39,20 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {(data?.recent_sales ?? []).map((row) => (
-                <tr key={row.id} className="border-t border-slate-200">
-                  <td className="px-4 py-3">{row.invoice_no}</td>
-                  <td className="px-4 py-3">{row.customer_name || "Walk-in"}</td>
-                  <td className="px-4 py-3">{row.cashier_name}</td>
-                  <td className="px-4 py-3">₹ {row.total_amount}</td>
+              {(data?.recent_sales ?? []).length ? (
+                (data?.recent_sales ?? []).map((row) => (
+                  <tr key={row.id} className="border-t border-slate-200">
+                    <td className="px-4 py-3">{row.invoice_no}</td>
+                    <td className="px-4 py-3">{row.customer_name || "Walk-in"}</td>
+                    <td className="px-4 py-3">{row.cashier_name}</td>
+                    <td className="px-4 py-3">₹ {row.total_amount}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={4}>No recent sales yet.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </TableCard>
@@ -62,14 +68,20 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {(data?.low_stock_items ?? []).map((row) => (
-                <tr key={row.sku} className="border-t border-slate-200">
-                  <td className="px-4 py-3">{row.product_name}</td>
-                  <td className="px-4 py-3">{row.sku}</td>
-                  <td className="px-4 py-3">{row.current_stock}</td>
-                  <td className="px-4 py-3">{row.reorder_level}</td>
+              {(data?.low_stock_items ?? []).length ? (
+                (data?.low_stock_items ?? []).map((row) => (
+                  <tr key={row.sku} className="border-t border-slate-200">
+                    <td className="px-4 py-3">{row.product_name}</td>
+                    <td className="px-4 py-3">{row.sku}</td>
+                    <td className="px-4 py-3">{row.current_stock}</td>
+                    <td className="px-4 py-3">{row.reorder_level}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={4}>No low-stock alerts.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </TableCard>

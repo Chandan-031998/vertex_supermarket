@@ -41,8 +41,8 @@ export default function SuppliersPage() {
 
   return (
     <Layout title="Suppliers">
-      <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
-        {canSave ? <div className="card p-5">
+      <div className="grid gap-6 2xl:grid-cols-[420px_minmax(0,1fr)]">
+        {canSave ? <div className="card p-4 sm:p-5">
           <h3 className="text-lg font-semibold text-slate-900">{form.id ? "Edit Supplier" : "Add Supplier"}</h3>
           <form
             className="mt-4 space-y-3"
@@ -57,13 +57,13 @@ export default function SuppliersPage() {
               ["phone", "Phone"],
               ["email", "Email"],
               ["gst_no", "GST no"],
-              ["address", "Address"],
               ["city", "City"],
               ["state", "State"],
               ["pincode", "Pincode"],
             ].map(([key, label]) => (
               <input key={key} className="input" placeholder={label} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
             ))}
+            <textarea className="input min-h-24" placeholder="Address" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
             <button className="btn-primary w-full">{saveSupplier.isPending ? "Saving..." : form.id ? "Update Supplier" : "Save Supplier"}</button>
           </form>
         </div> : null}
@@ -81,7 +81,7 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {(suppliers ?? []).map((row) => (
+              {(suppliers ?? []).length ? (suppliers ?? []).map((row) => (
                 <tr key={row.id} className="border-t border-slate-200">
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900">{row.supplier_name}</div>
@@ -92,12 +92,16 @@ export default function SuppliersPage() {
                   <td className="px-4 py-3">₹ {row.paid_amount}</td>
                   <td className="px-4 py-3">₹ {row.pending_dues}</td>
                   <td className="px-4 py-3">
-                    {hasPermission("suppliers.edit") ? <button className="text-emerald-600" onClick={() => setForm(row)}>
+                    {hasPermission("suppliers.edit") ? <button className="text-emerald-600 transition hover:text-emerald-700" onClick={() => setForm(row)}>
                       Edit
                     </button> : null}
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr className="border-t border-slate-200">
+                  <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>No suppliers found yet.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </TableCard>

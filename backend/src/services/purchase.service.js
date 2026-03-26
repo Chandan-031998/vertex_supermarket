@@ -107,7 +107,7 @@ export async function listPurchases(filters = {}) {
      LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
      LEFT JOIN supplier_payments sp ON sp.purchase_order_id = po.id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     GROUP BY po.id
+     GROUP BY po.id, s.supplier_name, u.full_name
      ORDER BY po.order_date DESC, po.id DESC`,
     params
   );
