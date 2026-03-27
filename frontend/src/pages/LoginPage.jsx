@@ -9,15 +9,20 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
+    setSubmitting(true);
     try {
       await login(form.email, form.password);
       navigate("/");
     } catch (err) {
-      setError(err?.response?.data?.message || "Login failed");
+      setError(err?.message || "Login failed");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -59,7 +64,9 @@ export default function LoginPage() {
             />
           </div>
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-          <button className="btn-primary w-full">Sign In</button>
+          <button className="btn-primary w-full" disabled={submitting}>
+            {submitting ? "Signing In..." : "Sign In"}
+          </button>
         </form>
         <div className="mt-6 text-center text-xs text-slate-500">{settings.footer_text}</div>
       </div>

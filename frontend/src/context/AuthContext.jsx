@@ -1,29 +1,47 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import api from "../api/client";
+import { apiClient, TOKEN_KEY, SESSION_TOKEN_KEY, getStoredToken } from "../services/api";
 
 const AuthContext = createContext(null);
-const TOKEN_KEY = "vertex_token";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  function clearTokenStorage() {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+  }
+
+  function setTokenStorage(token, remember = true) {
+    if (!token) {
+      clearTokenStorage();
+      return;
+    }
+    if (remember) {
+      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+      return;
+    }
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+  }
+
   async function loadUser() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = getStoredToken();
     if (!token) {
       setLoading(false);
       return;
     }
 
     try {
-      const res = await api.get("/auth/me", {
+      const res = await apiClient.get("/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       setUser(res.data.data);
     } catch (error) {
-      localStorage.removeItem(TOKEN_KEY);
+      clearTokenStorage();
       setUser(null);
     } finally {
       setLoading(false);
@@ -34,12 +52,35 @@ export function AuthProvider({ children }) {
     loadUser();
   }, []);
 
-  async function login(email, password) {
-    const res = await api.post("/auth/login", { email, password });
-    const { accessToken, user: authenticatedUser } = res.data.data;
-    localStorage.setItem(TOKEN_KEY, accessToken);
-    setUser(authenticatedUser);
-    return authenticatedUser;
+  async function login(email, password, options = {}) {
+    const remember = options.remember ?? true;
+    try {
+      const res = await apiClient.post("/auth/login", { email, password });
+      const data = res?.data?.data || {};
+      const accessToken = data.accessToken;
+      const authenticatedUser = data.user;
+
+      if (!accessToken || !authenticatedUser) {
+        throw new Error("Invalid login response from server");
+      }
+
+      setTokenStorage(accessToken, remember);
+      setUser(authenticatedUser);
+      return authenticatedUser;
+    } catch (error) {
+      const status = error?.response?.status;
+      const backendMessage = error?.response?.data?.message;
+
+      if (status === 401) {
+        throw new Error(backendMessage || "Invalid email or password");
+      }
+
+      if (!error?.response) {
+        throw new Error("Unable to reach server. Check internet/CORS and try again.");
+      }
+
+      throw new Error(backendMessage || "Login failed. Please try again.");
+    }
   }
 
   async function refreshUser() {
@@ -47,7 +88,7 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    localStorage.removeItem(TOKEN_KEY);
+    clearTokenStorage();
     setUser(null);
   }
 
