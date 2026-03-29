@@ -14,6 +14,12 @@ function round2(value) {
   return Number(Number(value || 0).toFixed(2));
 }
 
+function normalizeBarcode(value) {
+  return String(value ?? "").trim().replace(/\s+/g, "");
+}
+
+const CAMERA_SCANNER_ID = "pos-camera-scanner";
+
 export default function POSPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -29,11 +35,9 @@ export default function POSPage() {
   const [isBarcodeScanning, setIsBarcodeScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
   const scanInputRef = useRef(null);
-  const cameraVideoRef = useRef(null);
-  const cameraStreamRef = useRef(null);
-  const cameraRafRef = useRef(null);
-  const detectorRef = useRef(null);
+  const html5QrCodeRef = useRef(null);
   const scanLockRef = useRef(false);
 
   const canCreateSale = hasPermission("pos.add");
@@ -82,12 +86,33 @@ export default function POSPage() {
 
   useEffect(() => {
     return () => {
-      if (cameraRafRef.current) {
-        cancelAnimationFrame(cameraRafRef.current);
+      const scanner = html5QrCodeRef.current;
+      html5QrCodeRef.current = null;
+      scanLockRef.current = false;
+
+      if (!scanner) {
+        return;
       }
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+
+      Promise.resolve()
+        .then(async () => {
+          try {
+            if (scanner.isScanning) {
+              await scanner.stop();
+            }
+          } catch {
+            // Ignore scanner stop errors during unmount cleanup.
+          }
+
+          try {
+            await scanner.clear();
+          } catch {
+            // Ignore container clear errors during unmount cleanup.
+          }
+        })
+        .catch(() => {
+          // Cleanup best-effort only.
+        });
     };
   }, []);
 
@@ -180,9 +205,9 @@ export default function POSPage() {
   }
 
   async function handleScanSubmit(manualValue) {
-    const scannedValue = String(manualValue ?? search || "").trim();
+    const scannedValue = normalizeBarcode(manualValue ?? search);
     if (!scannedValue || isBarcodeScanning) {
-      return;
+      return false;
     }
 
     setIsBarcodeScanning(true);
@@ -193,13 +218,15 @@ export default function POSPage() {
       addToCart(product);
       setSearch("");
       setCameraError("");
+      return true;
     } catch (error) {
       setSearch("");
       if (error?.response?.status === 404) {
-        setMessage(`No product found for barcode: ${scannedValue}`);
+        setMessage("Product not found");
       } else {
         setMessage(error?.response?.data?.message || "Failed to scan barcode");
       }
+      return false;
     } finally {
       setIsBarcodeScanning(false);
       scanInputRef.current?.focus();
@@ -215,77 +242,116 @@ export default function POSPage() {
     handleScanSubmit();
   }
 
-  function stopCameraScanner() {
-    if (cameraRafRef.current) {
-      cancelAnimationFrame(cameraRafRef.current);
-      cameraRafRef.current = null;
-    }
-    if (cameraStreamRef.current) {
-      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current = null;
-    }
+  async function stopCameraScanner() {
+    const scanner = html5QrCodeRef.current;
+    html5QrCodeRef.current = null;
     scanLockRef.current = false;
     setIsCameraOpen(false);
+    setIsCameraStarting(false);
+
+    if (scanner) {
+      try {
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+      } catch {
+        // Ignore scanner stop errors when closing the modal.
+      }
+
+      try {
+        await scanner.clear();
+      } catch {
+        // Ignore container clear errors when closing the modal.
+      }
+    }
+
     scanInputRef.current?.focus();
   }
 
   async function startCameraScanner() {
+    if (isCameraOpen || isCameraStarting) {
+      return;
+    }
+
+    const hasCameraSupport = typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia;
+    const isLocalhost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+    if (!hasCameraSupport) {
+      setCameraError("Camera scanning is not supported on this device/browser. Use manual barcode entry instead.");
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.isSecureContext && !isLocalhost) {
+      setCameraError("Camera scanning requires HTTPS on mobile Safari. Open this POS over HTTPS or use manual barcode entry.");
+      return;
+    }
+
+    setMessage("");
+    setCameraError("");
+    setIsCameraStarting(true);
+    setIsCameraOpen(true);
+
     try {
-      setCameraError("");
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
 
-      if (!window.BarcodeDetector) {
-        setCameraError("Camera barcode scan is not supported on this browser. Use Chrome on Android.");
-        return;
-      }
-
-      if (!detectorRef.current) {
-        detectorRef.current = new window.BarcodeDetector({
-          formats: ["code_128", "ean_13", "ean_8", "upc_a", "upc_e"],
-        });
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => resolve());
       });
 
-      cameraStreamRef.current = stream;
-      setIsCameraOpen(true);
+      const scannerHost = document.getElementById(CAMERA_SCANNER_ID);
+      if (!scannerHost) {
+        throw new Error("Scanner container is not available.");
+      }
 
-      const video = cameraVideoRef.current;
-      if (!video) return;
+      const scanner = new Html5Qrcode(CAMERA_SCANNER_ID, false);
+      html5QrCodeRef.current = scanner;
 
-      video.srcObject = stream;
-      await video.play();
-
-      const tick = async () => {
-        if (!cameraVideoRef.current || scanLockRef.current) {
-          return;
-        }
-
-        try {
-          const codes = await detectorRef.current.detect(cameraVideoRef.current);
-          if (codes?.length && codes[0]?.rawValue) {
-            const barcodeValue = String(codes[0].rawValue).trim();
-            if (barcodeValue) {
-              scanLockRef.current = true;
-              setSearch(barcodeValue);
-              await handleScanSubmit(barcodeValue);
-              stopCameraScanner();
-              return;
-            }
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          aspectRatio: 1.777778,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const width = Math.max(180, Math.min(viewfinderWidth - 32, 280));
+            const height = Math.max(100, Math.min(viewfinderHeight - 32, 140));
+            return { width, height };
+          },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+          ],
+        },
+        async (decodedText) => {
+          const barcodeValue = normalizeBarcode(decodedText);
+          if (!barcodeValue || scanLockRef.current) {
+            return;
           }
-        } catch {
-          // Keep scanning loop active.
-        }
 
-        cameraRafRef.current = requestAnimationFrame(tick);
-      };
+          scanLockRef.current = true;
+          setSearch(barcodeValue);
 
-      cameraRafRef.current = requestAnimationFrame(tick);
+          try {
+            await handleScanSubmit(barcodeValue);
+          } finally {
+            await stopCameraScanner();
+          }
+        },
+        () => {
+          // Ignore frame-level decode misses and keep scanning.
+        },
+      );
     } catch (error) {
-      setCameraError(error?.message || "Unable to open camera scanner.");
-      stopCameraScanner();
+      const errorMessage =
+        error?.message?.toLowerCase().includes("permission")
+          ? "Camera access was denied. Allow camera permission in Safari and try again."
+          : "Unable to open the camera scanner. Use manual barcode entry if camera access is unavailable.";
+      setCameraError(errorMessage);
+      await stopCameraScanner();
+    } finally {
+      setIsCameraStarting(false);
     }
   }
 
@@ -381,8 +447,9 @@ export default function POSPage() {
                 type="button"
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
                 onClick={startCameraScanner}
+                disabled={isCameraStarting}
               >
-                Scan Camera
+                {isCameraStarting ? "Opening..." : "Open Camera"}
               </button>
               <select className="input" value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
                 <option value="">Walk-in customer</option>
@@ -539,7 +606,7 @@ export default function POSPage() {
 
       {isCameraOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">Scan Barcode</h3>
               <button
@@ -550,8 +617,11 @@ export default function POSPage() {
                 Close
               </button>
             </div>
-            <video ref={cameraVideoRef} className="h-72 w-full rounded-xl bg-black object-cover" playsInline muted />
-            <p className="mt-2 text-xs text-slate-500">Point camera at barcode. It auto-adds on successful scan.</p>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+              <div id={CAMERA_SCANNER_ID} className="min-h-[18rem] w-full" />
+            </div>
+            <p className="mt-3 text-xs text-slate-500">Point the rear camera at a barcode. The product is added automatically after a successful read.</p>
+            <p className="mt-1 text-xs text-slate-400">If camera access fails on iPhone, confirm this site is opened in Safari over HTTPS and camera permission is allowed.</p>
           </div>
         </div>
       ) : null}
